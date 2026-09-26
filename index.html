@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Мой музыкальный плеер</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #101010;
+    color: white;
+    font-family: Arial, sans-serif;
+
+    display: flex;
+    justify-content: center;
+}
+
+.player {
+    width: 100%;
+    max-width: 500px;
+    padding: 25px 18px;
+}
+
+h1 {
+    text-align: center;
+    margin: 5px 0 25px;
+}
+
+.cover {
+    width: 230px;
+    height: 230px;
+    margin: auto;
+
+    border-radius: 25px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-size: 90px;
+
+    background: linear-gradient(135deg, #333, #111);
+    box-shadow: 0 15px 40px rgba(0,0,0,.5);
+}
+
+.info {
+    text-align: center;
+    margin-top: 25px;
+}
+
+#songName {
+    font-size: 21px;
+    font-weight: bold;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#songNumber {
+    color: #888;
+    margin-top: 7px;
+}
+
+input[type="range"] {
+    width: 100%;
+    accent-color: white;
+}
+
+.progress {
+    margin-top: 25px;
+}
+
+.time {
+    display: flex;
+    justify-content: space-between;
+    color: #888;
+    font-size: 13px;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 25px;
+    margin: 25px 0;
+}
+
+button {
+    border: none;
+    background: #292929;
+    color: white;
+
+    width: 55px;
+    height: 55px;
+
+    border-radius: 50%;
+
+    font-size: 21px;
+    cursor: pointer;
+}
+
+button:active {
+    transform: scale(.9);
+}
+
+.play {
+    width: 72px;
+    height: 72px;
+
+    background: white;
+    color: black;
+
+    font-size: 27px;
+}
+
+.volume {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.playlist-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.song {
+    padding: 15px;
+    margin-bottom: 8px;
+
+    border-radius: 12px;
+
+    background: #1d1d1d;
+
+    cursor: pointer;
+
+    transition: .2s;
+}
+
+.song:active {
+    transform: scale(.98);
+}
+
+.song.active {
+    background: #3a3a3a;
+}
+
+@media (max-width: 400px) {
+
+    .cover {
+        width: 190px;
+        height: 190px;
+        font-size: 70px;
+    }
+
+    .player {
+        padding: 20px 14px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="player">
+
+    <h1>🎵 Моя музыка</h1>
+
+    <div class="cover">
+        🎵
+    </div>
+
+    <div class="info">
+
+        <div id="songName">
+            Выберите песню
+        </div>
+
+        <div id="songNumber">
+            0 / 0
+        </div>
+
+    </div>
+
+    <div class="progress">
+
+        <input
+            id="progress"
+            type="range"
+            min="0"
+            max="100"
+            value="0"
+        >
+
+        <div class="time">
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+        </div>
+
+    </div>
+
+    <div class="controls">
+
+        <button id="prev">
+            ⏮
+        </button>
+
+        <button id="play" class="play">
+            ▶
+        </button>
+
+        <button id="next">
+            ⏭
+        </button>
+
+    </div>
+
+    <div class="volume">
+
+        🔊
+
+        <input
+            id="volume"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value="1"
+        >
+
+    </div>
+
+    <div class="playlist-title">
+        Плейлист
+    </div>
+
+    <div id="playlist"></div>
+
+</div>
+
+<audio id="audio"></audio>
+
+
+<script>
+
+/* =====================================================
+   ДОБАВЬ СЮДА СВОИ ПЕСНИ
+   ===================================================== */
+
+const songs = [
+
+    {
+        name: "Believer",
+        file: "music/Believer.mp3"
+    },
+
+    {
+        name: "Faded",
+        file: "music/Faded.mp3"
+    },
+
+    {
+        name: "Starboy",
+        file: "music/Starboy.mp3"
+    }
+
+];
+
+
+/* =====================================================
+   ПЕРЕМЕННЫЕ
+   ===================================================== */
+
+const audio = document.getElementById("audio");
+
+const playButton =
+    document.getElementById("play");
+
+const prevButton =
+    document.getElementById("prev");
+
+const nextButton =
+    document.getElementById("next");
+
+const progress =
+    document.getElementById("progress");
+
+const volume =
+    document.getElementById("volume");
+
+const songName =
+    document.getElementById("songName");
+
+const songNumber =
+    document.getElementById("songNumber");
+
+const currentTime =
+    document.getElementById("currentTime");
+
+const duration =
+    document.getElementById("duration");
+
+const playlist =
+    document.getElementById("playlist");
+
+
+let currentSong = 0;
+
+
+/* =====================================================
+   СОЗДАНИЕ ПЛЕЙЛИСТА
+   ===================================================== */
+
+function createPlaylist() {
+
+    playlist.innerHTML = "";
+
+    songs.forEach((song, index) => {
+
+        const element =
+            document.createElement("div");
+
+        element.className = "song";
+
+        element.textContent = song.name;
+
+        element.onclick = function() {
+
+            currentSong = index;
+
+            loadSong();
+
+            playSong();
+
+        };
+
+        playlist.appendChild(element);
+
+    });
+
+}
+
+
+/* =====================================================
+   ЗАГРУЗКА ПЕСНИ
+   ===================================================== */
+
+function loadSong() {
+
+    const song = songs[currentSong];
+
+    audio.src = song.file;
+
+    songName.textContent = song.name;
+
+    songNumber.textContent =
+        `${currentSong + 1} / ${songs.length}`;
+
+    updatePlaylist();
+
+
+    /*
+       Информация для экрана блокировки
+    */
+
+    if ("mediaSession" in navigator) {
+
+        navigator.mediaSession.metadata =
+            new MediaMetadata({
+
+                title: song.name,
+
+                artist: "Моя музыка",
+
+                album: "Мой плеер"
+
+            });
+
+    }
+
+}
+
+
+/* =====================================================
+   PLAY
+   ===================================================== */
+
+function playSong() {
+
+    audio.play();
+
+    playButton.textContent = "⏸";
+
+}
+
+
+/* =====================================================
+   PAUSE
+   ===================================================== */
+
+function pauseSong() {
+
+    audio.pause();
+
+    playButton.textContent = "▶";
+
+}
+
+
+/* =====================================================
+   PLAY / PAUSE
+   ===================================================== */
+
+playButton.onclick = function() {
+
+    if (audio.paused) {
+
+        playSong();
+
+    } else {
+
+        pauseSong();
+
+    }
+
+};
+
+
+/* =====================================================
+   NEXT
+   ===================================================== */
+
+nextButton.onclick = function() {
+
+    currentSong++;
+
+    if (currentSong >= songs.length) {
+
+        currentSong = 0;
+
+    }
+
+    loadSong();
+
+    playSong();
+
+};
+
+
+/* =====================================================
+   PREVIOUS
+   ===================================================== */
+
+prevButton.onclick = function() {
+
+    currentSong--;
+
+    if (currentSong < 0) {
+
+        currentSong = songs.length - 1;
+
+    }
+
+    loadSong();
+
+    playSong();
+
+};
+
+
+/* =====================================================
+   АВТОМАТИЧЕСКИ СЛЕДУЮЩАЯ ПЕСНЯ
+   ===================================================== */
+
+audio.addEventListener("ended", function() {
+
+    currentSong++;
+
+    if (currentSong >= songs.length) {
+
+        currentSong = 0;
+
+    }
+
+    loadSong();
+
+    playSong();
+
+});
+
+
+/* =====================================================
+   ПРОГРЕСС
+   ===================================================== */
+
+audio.addEventListener("timeupdate", function() {
+
+    if (!audio.duration) return;
+
+    progress.value =
+        (audio.currentTime /
+        audio.duration) * 100;
+
+    currentTime.textContent =
+        formatTime(audio.currentTime);
+
+});
+
+
+audio.addEventListener(
+    "loadedmetadata",
+    function() {
+
+        duration.textContent =
+            formatTime(audio.duration);
+
+    }
+);
+
+
+progress.addEventListener("input", function() {
+
+    if (!audio.duration) return;
+
+    audio.currentTime =
+        (progress.value / 100) *
+        audio.duration;
+
+});
+
+
+/* =====================================================
+   ГРОМКОСТЬ
+   ===================================================== */
+
+volume.addEventListener("input", function() {
+
+    audio.volume = volume.value;
+
+});
+
+
+/* =====================================================
+   ВРЕМЯ
+   ===================================================== */
+
+function formatTime(seconds) {
+
+    if (isNaN(seconds)) {
+
+        return "0:00";
+
+    }
+
+    const minutes =
+        Math.floor(seconds / 60);
+
+    const secondsLeft =
+        Math.floor(seconds % 60);
+
+    return minutes + ":" +
+        secondsLeft
+        .toString()
+        .padStart(2, "0");
+
+}
+
+
+/* =====================================================
+   АКТИВНАЯ ПЕСНЯ
+   ===================================================== */
+
+function updatePlaylist() {
+
+    const elements =
+        document.querySelectorAll(".song");
+
+    elements.forEach(
+        function(element, index) {
+
+            element.classList.toggle(
+                "active",
+                index === currentSong
+            );
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   УПРАВЛЕНИЕ С ЭКРАНА БЛОКИРОВКИ
+   ===================================================== */
+
+if ("mediaSession" in navigator) {
+
+    navigator.mediaSession.setActionHandler(
+        "play",
+        function() {
+            playSong();
+        }
+    );
+
+    navigator.mediaSession.setActionHandler(
+        "pause",
+        function() {
+            pauseSong();
+        }
+    );
+
+    navigator.mediaSession.setActionHandler(
+        "previoustrack",
+        function() {
+            prevButton.click();
+        }
+    );
+
+    navigator.mediaSession.setActionHandler(
+        "nexttrack",
+        function() {
+            nextButton.click();
+        }
+    );
+
+}
+
+
+/* =====================================================
+   ЗАПУСК
+   ===================================================== */
+
+createPlaylist();
+
+loadSong();
+
+</script>
+
+</body>
+</html>
